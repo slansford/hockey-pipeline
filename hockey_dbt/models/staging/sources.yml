@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: hockey_raw
+    database: my-project-1546209889053
+    schema: hockey_raw
+    tables:
+      - name: skaters
+      - name: goalies
+      - name: teams

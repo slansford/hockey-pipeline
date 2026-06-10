@@ -1,0 +1,20 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# dbt
+hockey_dbt/target/
+hockey_dbt/dbt_packages/
+hockey_dbt/logs/
+
+# Airflow
+airflow/logs/
+
+# Credentials - NEVER commit these
+**/credentials.json
+**/.env
+~/.dbt/profiles.yml
+
+# GCP
+application_default_credentials.jsonlogs/

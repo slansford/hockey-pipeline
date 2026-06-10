@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: stg_skaters
+    columns:
+      - name: player_id
+        data_tests:
+          - not_null
+          - unique
+      - name: player_name
+        data_tests:
+          - not_null
+      - name: team
+        data_tests:
+          - not_null
+      - name: position
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['C', 'L', 'R', 'D']
+
+  - name: stg_goalies
+    columns:
+      - name: player_name
+        data_tests:
+          - not_null
+      - name: save_pct
+        data_tests:
+          - not_null
+
+  - name: stg_teams
+    columns:
+      - name: team_name
+        data_tests:
+          - not_null
