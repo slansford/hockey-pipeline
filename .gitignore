@@ -19,3 +19,5 @@ airflow/logs/
 # GCP
 application_default_credentials.jsonlogs/
 airflow/config/
+.vscode/
+logs/

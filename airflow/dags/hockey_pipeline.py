@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from airflow import DAG
-from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 
 default_args = {
@@ -34,5 +33,10 @@ with DAG(
         bash_command='cd /opt/airflow/dags/hockey_dbt && dbt test --profiles-dir /opt/airflow/.dbt',
     )
 
+    es_index = BashOperator(
+        task_id='es_index',
+        bash_command='python /opt/airflow/dags/es_index.py',
+)
+
     # Define task dependencies
-    ingest_nhl_data >> dbt_run >> dbt_test
+    ingest_nhl_data >> dbt_run >> dbt_test >> es_index

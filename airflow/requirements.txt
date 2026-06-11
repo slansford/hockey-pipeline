@@ -2,3 +2,4 @@ dbt-bigquery
 google-cloud-bigquery
 requests
 anthropic
+elasticsearch==8.13.0
