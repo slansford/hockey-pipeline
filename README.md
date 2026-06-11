@@ -6,6 +6,37 @@ An end-to-end data engineering pipeline that ingests NHL statistics from the NHL
 
 Orchestrated by Apache Airflow on a daily schedule.
 
+```mermaid
+flowchart LR
+    A([NHL API]) -->|raw JSON| B
+
+    subgraph Docker [Docker - Local]
+        B[Airflow DAG\nDaily 6am]
+        B --> T1[ingest_nhl_data]
+        T1 --> T2[dbt_run]
+        T2 --> T3[dbt_test]
+        T3 --> T4[es_index]
+    end
+
+    subgraph GCP [GCP / BigQuery]
+        RAW[(hockey_raw\nskaters, goalies, teams)]
+        STG[dbt staging\nviews]
+        MART[dbt marts\ntables]
+    end
+
+    subgraph Serving [Serving Layer]
+        ES[(Elasticsearch\nskater_stats index)]
+        RAG[Claude RAG\nNL queries]
+    end
+
+    T1 -->|load| RAW
+    RAW --> STG
+    STG --> MART
+    T4 -->|index| ES
+    ES --> RAG
+    MART -->|analytics| ANA([Analysts])
+```
+
 ## Tech Stack
 
 - **Orchestration:** Apache Airflow 3.x (Docker)
