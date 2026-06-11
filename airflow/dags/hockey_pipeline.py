@@ -20,7 +20,7 @@ with DAG(
 
     ingest_nhl_data = BashOperator(
         task_id='ingest_nhl_data',
-        bash_command='python /opt/airflow/dags/nhl_ingest.py',
+        bash_command='python /opt/airflow/scripts/nhl_ingest.py',
     )
 
     dbt_run = BashOperator(
@@ -35,7 +35,7 @@ with DAG(
 
     es_index = BashOperator(
         task_id='es_index',
-        bash_command='python /opt/airflow/dags/es_index.py',
+        bash_command='python /opt/airflow/scripts/es_index.py',
 )
 
     # Define task dependencies
