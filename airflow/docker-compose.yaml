@@ -87,7 +87,7 @@ x-airflow-common:
     - ~/hockey-pipeline/dbt:/opt/airflow/dags/dbt
     - ~/.config/gcloud/application_default_credentials.json:/opt/airflow/gcp/credentials.json
     - ~/.dbt/profiles.yml:/opt/airflow/.dbt/profiles.yml
-    - ~/hockey-pipeline/scripts:/opt/airfow/scripts
+    - ~/hockey-pipeline/scripts:/opt/airflow/scripts
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
