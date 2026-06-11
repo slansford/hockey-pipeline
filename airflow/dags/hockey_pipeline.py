@@ -25,12 +25,12 @@ with DAG(
 
     dbt_run = BashOperator(
         task_id='dbt_run',
-        bash_command='cd /opt/airflow/dags/hockey_dbt && dbt run --profiles-dir /opt/airflow/.dbt',
+        bash_command='cd /opt/airflow/dags/dbt && dbt run --profiles-dir /opt/airflow/.dbt',
     )
 
     dbt_test = BashOperator(
         task_id='dbt_test',
-        bash_command='cd /opt/airflow/dags/hockey_dbt && dbt test --profiles-dir /opt/airflow/.dbt',
+        bash_command='cd /opt/airflow/dags/dbt && dbt test --profiles-dir /opt/airflow/.dbt',
     )
 
     es_index = BashOperator(
