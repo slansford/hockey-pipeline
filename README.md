@@ -52,23 +52,23 @@ flowchart LR
 
 ### Staging Layer
 Raw NHL API data cleaned and renamed:
-- `stg_skater` — skater stats per season
-- `stg_goalie` — goalie stats per season
-- `stg_team` — team stats per season
+- `stg_skater` - skater stats per season
+- `stg_goalie` - goalie stats per season
+- `stg_team` - team stats per season
 
 ### Marts Layer
 Business-ready models with derived metrics:
-- `mart_skater_stats` — points per game, goals per game, shots per game
-- `mart_goalie_stats` — win percentage, calculated save percentage
-- `mart_team_standings` — goal differential, goals for/against per game
+- `mart_skater_stats` - points per game, goals per game, shots per game
+- `mart_goalie_stats` - win percentage, calculated save percentage
+- `mart_team_standings` - goal differential, goals for/against per game
 
 ## AI / RAG Layer
 
 A natural language query tool powered by Claude and Elasticsearch. Ask questions in plain English and get hockey analytics insights back.
 
 Uses a two-step LLM pattern:
-1. **Query generation** — Claude interprets the question and generates an Elasticsearch query
-2. **Analysis** — Claude analyzes the results and returns a natural language answer
+1. **Query generation** - Claude interprets the question and generates an Elasticsearch query
+2. **Analysis** - Claude analyzes the results and returns a natural language answer
 
 Example questions:
 - "Tell me about Sidney Crosby's season"
