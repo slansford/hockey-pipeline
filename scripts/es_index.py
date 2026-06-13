@@ -2,29 +2,62 @@ import os
 from google.cloud import bigquery
 from elasticsearch import Elasticsearch
 
-PROJECT_ID = os.environ.get('GCP_PROJECT_ID')
-ES_HOST = os.environ.get('ES_HOST', 'http://elasticsearch:9200')
-INDEX_NAME = 'skater_stats'
+def run() -> None:
+    """
+    Entry point for DAG
 
-def get_skater_stats_from_bq() -> list[dict]:
-    client = bigquery.Client(project=PROJECT_ID)
-    query = """
-        select *
-        from `{}.hockey_dbt_dev.mart_skater_stats`
-    """.format(PROJECT_ID)
+    Args:
+        None
+
+    Returns:
+        None
     
+    """
+
+    data = get_skater_stats_from_bigquery()
+
+    index_to_elasticsearch(data)
+
+def get_skater_stats_from_bigquery() -> list[dict]:
+    """
+    Retrieves skater stats from dbt mart housed in BigQuery
+
+    Args:
+        None
+
+    Returns:
+        List of skater stats in dictionary format
+    """
+
+    project_id = os.environ.get('GOOGLE_CLOUD_PROJECT')
+    client = bigquery.Client(project=project_id)
+    query = f"select * from `{project_id}.hockey_dbt_dev.mart_skater_stats`"
+
     results = client.query(query).result()
+
     return [dict(row) for row in results]
 
-def index_to_elasticsearch(rows: list[dict]):
-    es = Elasticsearch(ES_HOST)
+def index_to_elasticsearch(data: list[dict]) -> None:
+    """
+    Indexes skater data retreived from BigQuery into Elasticsearch
+
+    Args:
+        List of skater stats in dictionary format
+
+    Returns:
+        None
+    """
+
+    host = os.environ.get('ES_HOST')
+    es = Elasticsearch(host)
+    index = 'skater_stats'
     
-    #clears out any existing indices
-    if es.indices.exists(index=INDEX_NAME):
-        es.indices.delete(index=INDEX_NAME)
+    #Clears out any existing matching indices
+    if es.indices.exists(index=index):
+        es.indices.delete(index=index)
     
-    #creates indices
-    es.indices.create(index=INDEX_NAME, body={
+    #Creates index
+    es.indices.create(index=index, body={
         "mappings": {
             "properties": {
                 "player_id":        {"type": "integer"},
@@ -43,18 +76,10 @@ def index_to_elasticsearch(rows: list[dict]):
         }
     })
     
-    #mass-indexes documents
-    for row in rows:
+    #Bulk indexes skater stats as documents
+    for record in data:
         es.index(
-            index=INDEX_NAME,
-            id=row['player_id'],
-            document=row
+            index=index,
+            id=record['player_id'],
+            document=record
         )
-    
-    print(f"Indexed {len(rows)} skaters into Elasticsearch")
-
-if __name__ == "__main__":
-    print("Fetching skater stats from BigQuery...")
-    rows = get_skater_stats_from_bq()
-    print(f"Got {len(rows)} rows")
-    index_to_elasticsearch(rows)

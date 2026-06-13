@@ -1,42 +1,53 @@
-from datetime import datetime, timedelta
-from airflow import DAG
-from airflow.operators.bash import BashOperator
+import sys
+import os
 
-default_args = {
-    'owner': 'airflow',
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
-}
+scripts_path = '/opt/airflow/scripts' if os.path.exists('/opt/airflow/scripts') else os.path.join(os.path.dirname(__file__), '../../scripts')
+sys.path.insert(0, scripts_path)  #Adds script path to Python import directories
 
-with DAG(
-    dag_id='hockey_pipeline',
-    default_args=default_args,
-    description='Ingest NHL data and run dbt transformations',
-    schedule='0 6 * * *',  # runs every day at 6am
-    start_date=datetime(2024, 1, 1),
+from datetime import datetime
+from airflow.decorators import dag, task # type: ignore
+
+@dag(
+    schedule='0 9 * * *',
+    start_date=datetime(2026, 6, 1),
     catchup=False,
-    tags=['hockey'],
-) as dag:
-
-    ingest_nhl_data = BashOperator(
-        task_id='ingest_nhl_data',
-        bash_command='python /opt/airflow/scripts/nhl_ingest.py',
-    )
-
-    dbt_run = BashOperator(
-        task_id='dbt_run',
-        bash_command='cd /opt/airflow/dags/dbt && dbt run --profiles-dir /opt/airflow/.dbt',
-    )
-
-    dbt_test = BashOperator(
-        task_id='dbt_test',
-        bash_command='cd /opt/airflow/dags/dbt && dbt test --profiles-dir /opt/airflow/.dbt',
-    )
-
-    es_index = BashOperator(
-        task_id='es_index',
-        bash_command='python /opt/airflow/scripts/es_index.py',
+    tags=['hockey']
 )
+def hockey_pipeline():
+    """
+    Simple data pipeline using Airflow TaskFlow API to load data from the NHL API into BigQuery, builds dbt staging and mart layers, tests them, and then updates an Elasticsearch index with that data.
+    
+    """
+    @task()
+    def ingest_nhl_data() -> None:
+        """
+        Loads data from the NHL API into BigQuery.
+        """
+        import nhl_ingest
+        nhl_ingest.run()
 
-    # Define task dependencies
-    ingest_nhl_data >> dbt_run >> dbt_test >> es_index
+    @task.bash()
+    def dbt_run() -> str:
+        """
+        Builds staging and mart layers with dbt in BigQuery.
+        """
+        return 'dbt run --project-dir /opt/airflow/dbt --profiles-dir /opt/airflow/.dbt'
+    
+    @task.bash()
+    def dbt_test() -> str:
+        """
+        Tests staging and mart layers with dbt.
+        """
+        return 'dbt test --project-dir /opt/airflow/dbt --profiles-dir /opt/airflow/.dbt'
+    
+    @task()
+    def es_index() -> None:
+        """
+        Updates Elasticsearch index with retrieved data for use with a Claude-powered RAG model.
+        """
+        import es_index
+        es_index.run()
+
+    ingest_nhl_data() >> dbt_run() >> dbt_test() >> es_index()
+
+hockey_pipeline()

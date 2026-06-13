@@ -1,5 +1,4 @@
-dbt-bigquery
-google-cloud-bigquery
-requests
-anthropic
+dbt-bigquery==1.11.1
+google-cloud==0.34.0
+anthropic==0.107.1
 elasticsearch==8.13.0

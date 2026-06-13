@@ -21,7 +21,7 @@ final as (
         shooting_pct,
         toi_per_game,
 
-        -- derived metrics
+        -- calculated metrics
         round(goals / nullif(games_played, 0), 3)       as goals_per_game,
         round(assists / nullif(games_played, 0), 3)     as assists_per_game,
         round(points / nullif(games_played, 0), 3)      as points_per_game,

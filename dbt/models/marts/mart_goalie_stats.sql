@@ -16,7 +16,7 @@ final as (
         shots_against,
         saves,
 
-        -- derived metrics
+        -- calculated metrics
         wins + losses + ot_losses                               as total_decisions,
         round(wins / nullif(games_played, 0), 3)               as win_pct,
         round(saves / nullif(shots_against, 0), 4)             as calculated_save_pct

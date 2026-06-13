@@ -67,7 +67,7 @@ x-airflow-common:
     AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW__API_AUTH__JWT_SECRET:-airflow_jwt_secret}
     AIRFLOW__API_AUTH__JWT_ISSUER: ${AIRFLOW__API_AUTH__JWT_ISSUER:-airflow}
     GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/gcp/credentials.json
-    GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+    GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
@@ -83,8 +83,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
-    - ~/hockey-pipeline/nhl_ingest.py:/opt/airflow/dags/nhl_ingest.py
-    - ~/hockey-pipeline/dbt:/opt/airflow/dags/dbt
+    - ~/hockey-pipeline/dbt:/opt/airflow/dbt
     - ~/.config/gcloud/application_default_credentials.json:/opt/airflow/gcp/credentials.json
     - ~/.dbt/profiles.yml:/opt/airflow/.dbt/profiles.yml
     - ~/hockey-pipeline/scripts:/opt/airflow/scripts
@@ -339,6 +338,21 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+
+  elasticsearch:
+    image: elasticsearch:8.13.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 30s
+      retries: 5
+      start_period: 30s
+    restart: always
 
 volumes:
   postgres-db-volume:

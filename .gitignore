@@ -1,22 +1,22 @@
-# Python
+# python
 .venv/
 __pycache__/
 *.pyc
 
-# dbt
+#dbt
 hockey_dbt/target/
 hockey_dbt/dbt_packages/
 hockey_dbt/logs/
 
-# Airflow
+#airflow
 airflow/logs/
 
-# Credentials - NEVER commit these
+#credentials
 **/credentials.json
 **/.env
 ~/.dbt/profiles.yml
 
-# GCP
+#google cloud platform
 application_default_credentials.jsonlogs/
 airflow/config/
 .vscode/
