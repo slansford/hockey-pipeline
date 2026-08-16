@@ -1,6 +1,6 @@
 # NHL Hockey Pipeline
 
-An end-to-end data engineering pipeline built to demonstrate proficiency with modern data engineering tools. Ingests statistics from the NHL into BigQuery, transforms and qualifies them with dbt, and indexes them with Elasticsearch; all orchestrated by Apache Airflow running on a custom Docker image. Includes a Claude-powered RAG model for querying player stats in natural language.
+An end-to-end data engineering pipeline built to demonstrate proficiency with modern data engineering tools. Ingests statistics from the NHL into BigQuery, and transforms and qualifies them with dbt; all orchestrated by Apache Airflow running on a custom Docker image. Includes a Claude-powered RAG model for querying player stats in natural language.
 
 ## Architecture
 
@@ -15,7 +15,6 @@ flowchart LR
         B --> T1[ingest_nhl_data]
         T1 --> T2[dbt_run]
         T2 --> T3[dbt_test]
-        T3 --> T4[es_index]
     end
 
     subgraph GCP [GCP / BigQuery]
@@ -25,15 +24,13 @@ flowchart LR
     end
 
     subgraph Serving [Serving Layer]
-        ES[(Elasticsearch\nskater_stats index)]
         RAG[Claude RAG\nNL queries]
     end
 
     T1 -->|load| RAW
     RAW --> STG
     STG --> MART
-    T4 -->|index| ES
-    ES --> RAG
+    MART --> RAG
     MART -->|analytics| ANA([Analysts])
 ```
 
@@ -44,7 +41,6 @@ flowchart LR
 - **Transformation:** dbt (BigQuery adapter)
 - **Language:** Python 3.12
 - **Containerization:** Docker
-- **Search & Indexing:** Elasticsearch 8.13
 - **AI / RAG:** Claude (Anthropic API)
 
 
@@ -64,10 +60,10 @@ Business-ready models with derived metrics:
 
 ## AI / RAG Layer
 
-A natural language query tool powered by Claude and Elasticsearch. Ask questions in plain English and get hockey analytics insights back.
+A natural language query tool powered by Claude. Ask questions in plain English and get hockey analytics insights back.
 
 Uses a two-step LLM pattern:
-1. **Query generation** - Claude interprets the question and generates an Elasticsearch query
+1. **Query generation** - Claude interprets the question and generates a BigQuery query
 2. **Analysis** - Claude analyzes the results and returns a natural language answer
 
 Example questions:
@@ -82,7 +78,6 @@ The Airflow DAG runs daily at 9am and executes four tasks in sequence:
 1. **ingest_nhl_data** - hits the NHL API and loads raw JSON into BigQuery
 2. **dbt_run** - runs all dbt models to transform raw data into serving-ready tables
 3. **dbt_test** - runs data quality tests to validate the output
-4. **es_index** -Indexes data from `mart_skater_stats` into Elasticsearch for RAG querying
 
 ## Local Development
 
@@ -126,7 +121,7 @@ cd dbt
 dbt debug
 ```
 
-6. Start Airflow and Elasticsearch
+6. Start Airflow
 ```bash
 cd airflow
 docker compose up -d
