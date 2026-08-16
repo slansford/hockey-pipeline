@@ -2,7 +2,7 @@ import json
 import os
 import argparse
 import anthropic
-from elasticsearch import Elasticsearch
+from google.cloud import bigquery
 
 def main():
     """
@@ -13,11 +13,9 @@ def main():
 
     Returns:
         None.
-    
     """
-
     parser = argparse.ArgumentParser(
-        description="Query Elasticsearch for 2023-2024 NHL hockey stats using natural language."
+        description="Query BigQuery for 2023-2024 NHL hockey stats using natural language."
     )
     parser.add_argument(
         "question",
@@ -28,96 +26,93 @@ def main():
     args = parser.parse_args()
     hockey_rag(args.question)
 
-def generate_es_query(question: str) -> dict:
+
+def generate_sql(question: str) -> str:
     """
-    Use Claude to convert a natural language question into an Elasticsearch-formatted query.
+    Use Claude to convert a natural language question into a BigQuery SQL query.
 
     Args:
         question - User's natural language query.
 
     Returns:
-        Elasticsearch-formatted query of the user's input.
-    
+        BigQuery SQL query string.
     """
+    project_id = os.environ.get('GOOGLE_CLOUD_PROJECT')
     client = anthropic.Anthropic()
-    
+
     message = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1024,
         messages=[
             {
                 "role": "user",
-                "content": f"""You are an Elasticsearch query generator for NHL hockey stats.
+                "content": f"""You are a BigQuery SQL generator for NHL hockey stats.
 
-The index contains these fields:
-- player_name (text) — full name e.g. "Connor McDavid"
-- team (keyword) — 3 letter abbreviation e.g. "EDM", "TOR", "BOS"
-- position (keyword) — "C", "L", "R", "D"
-- games_played (integer)
-- goals (integer)
-- assists (integer)
-- points (integer)
-- plus_minus (integer)
-- penalty_minutes (integer)
-- power_play_goals (integer)
-- power_play_points (integer)
-- short_handed_goals (integer)
-- shots (integer)
-- shooting_pct (float) — e.g. 0.152 means 15.2%
-- toi_per_game (float) — time on ice in seconds per game
-- goals_per_game (float)
-- assists_per_game (float)
-- points_per_game (float)
-- shots_per_game (float)
+The table is `{project_id}.hockey_dbt_dev.mart_skater_stats` and contains these fields:
+- player_name (STRING) — full name e.g. "Connor McDavid"
+- team (STRING) — 3 letter abbreviation e.g. "EDM", "TOR", "BOS"
+- position (STRING) — "C", "L", "R", "D"
+- games_played (INTEGER)
+- goals (INTEGER)
+- assists (INTEGER)
+- points (INTEGER)
+- plus_minus (INTEGER)
+- penalty_minutes (INTEGER)
+- power_play_goals (INTEGER)
+- power_play_points (INTEGER)
+- short_handed_goals (INTEGER)
+- shots (INTEGER)
+- shooting_pct (FLOAT) — e.g. 0.152 means 15.2%
+- toi_per_game (FLOAT) — time on ice in seconds per game
+- goals_per_game (FLOAT)
+- assists_per_game (FLOAT)
+- points_per_game (FLOAT)
+- shots_per_game (FLOAT)
 
-Convert this question into a valid Elasticsearch query JSON object.
-Return ONLY the raw JSON query object, no explanation, no markdown, no backticks.
+Convert this question into a valid BigQuery SQL query.
+Return ONLY the raw SQL string, no explanation, no markdown, no backticks.
 
 Question: {question}"""
             }
         ]
     )
-    
-    raw = message.content[0].text.strip()
-    return json.loads(raw)
+
+    return message.content[0].text.strip()
 
 
-def search_elasticsearch(question: str) -> list[dict]:
+def query_bigquery(sql: str) -> list[dict]:
     """
-    Searches Elasticsearch with a Claude-generated Elasticsearch query.
+    Executes a SQL query against BigQuery and returns results as a list of dicts.
 
     Args:
-        question - Claude-generated Elasticsearch-formatted query.
+        sql - BigQuery SQL query string.
 
     Returns:
-        List of top 10 relevant hits from Elasticsearch.
-    
+        List of rows as dicts.
     """
-    host = 'http://localhost:9200' #Different than container because this script is meant to be run locally, not on Docker
-    es = Elasticsearch(host)
-    index = 'skater_stats'
-    size = 10
-    
-    es_query = generate_es_query(question)
-    
-    response = es.search(index=index, body={**es_query, "size": size})
-    return [hit["_source"] for hit in response["hits"]["hits"]]
+    client = bigquery.Client()
+
+    # safety check -- only allow SELECT statements
+    if not sql.strip().upper().startswith('SELECT'):
+        raise ValueError("Only SELECT queries are permitted.")
+
+    results = client.query(sql).result()
+    return [dict(row) for row in results]
 
 
 def claude_summary(question: str, context: list[dict]) -> str:
     """
-    Summarizes Elasticsearch results using Claude.
+    Summarizes BigQuery results using Claude.
 
     Args:
-        question - Claude-generated Elasticsearch-formatted query.
-        context - Elasticsearch results
+        question - Original natural language question.
+        context - BigQuery query results as list of dicts.
 
     Returns:
-        Natural language-generated summary of Elasticsearch query results, generated by Claude.
-    
+        Natural language summary of results generated by Claude.
     """
     client = anthropic.Anthropic()
-    
+
     context_str = "\n".join([
         f"{p.get('player_name')} ({p.get('position')}, {p.get('team')}): "
         f"{p.get('games_played')} GP, {p.get('goals')} G, {p.get('assists')} A, "
@@ -127,7 +122,7 @@ def claude_summary(question: str, context: list[dict]) -> str:
         f"{p.get('power_play_goals')} PPG, {p.get('power_play_points')} PPP"
         for p in context
     ])
-    
+
     message = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1024,
@@ -146,33 +141,41 @@ Answer based only on the data provided."""
             }
         ]
     )
-    
+
     return message.content[0].text
 
 
 def hockey_rag(question: str):
     """
-    Ingests and answers natural language questions about 2023-2024 hockey stats store in Elasticsearch.
+    Answers natural language questions about 2023-2024 hockey stats using BigQuery and Claude.
 
     Args:
         question - User query.
 
     Returns:
-        Natural language-generated summary of Elasticsearch query results, generated by Claude.
-    
+        Natural language answer generated by Claude based on BigQuery results.
     """
     print(f"\nQuestion: {question}")
-    print("Searching player data...")
-    
-    context = search_elasticsearch(question)
-    
-    if not context:
-        print("No relevant players found")
+    print("Generating SQL query...")
+
+    sql = generate_sql(question)
+    print(f"\nGenerated SQL:\n{sql}\n")
+
+    print("Querying BigQuery...")
+    try:
+        results = query_bigquery(sql)
+    except Exception as e:
+        print(f"Query failed: {e}")
         return
-    
-    print(f"Found {len(context)} relevant players, asking Claude...")
-    answer = claude_summary(question, context)
+
+    if not results:
+        print("No results found.")
+        return
+
+    print(f"Found {len(results)} results, generating answer...")
+    answer = claude_summary(question, results)
     print(f"\nAnswer: {answer}")
+
 
 if __name__ == '__main__':
     main()

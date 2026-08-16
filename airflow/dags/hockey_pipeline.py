@@ -39,15 +39,8 @@ def hockey_pipeline():
         Tests staging and mart layers with dbt.
         """
         return 'dbt test --project-dir /opt/airflow/dbt --profiles-dir /opt/airflow/.dbt'
-    
-    @task()
-    def es_index() -> None:
-        """
-        Updates Elasticsearch index with retrieved data for use with a Claude-powered RAG model.
-        """
-        import es_index
-        es_index.run()
 
-    ingest_nhl_data() >> dbt_run() >> dbt_test() >> es_index()
+
+    ingest_nhl_data() >> dbt_run() >> dbt_test()
 
 hockey_pipeline()
